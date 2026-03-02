@@ -471,8 +471,26 @@ ${devState.contentBrief}`;
                 className={`flex-1 py-4 px-4 sm:px-6 font-semibold transition-all border-b-2 ${
                   activeTab === tab
                     ? 'border-blue-600 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    : 'border-transparent text-gray-600'
                 }`}
+                style={
+                  activeTab !== tab
+                    ? {
+                        transition: 'background-color 200ms',
+                        backgroundColor: 'transparent',
+                      }
+                    : undefined
+                }
+                onMouseEnter={(e) => {
+                  if (activeTab !== tab) {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 101, 244, 0.2)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== tab) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
               >
                 <div className="text-sm sm:text-base">{getTabTitle(tab as TabType)}</div>
               </button>
@@ -663,8 +681,26 @@ ${devState.contentBrief}`;
                           className={`flex-1 py-3 px-4 font-semibold text-sm transition-all border-b-2 ${
                             (developTab as DevelopmentState).subtab === subtab
                               ? 'border-blue-600 text-blue-600 bg-white'
-                              : 'border-transparent text-gray-600 hover:text-gray-900'
+                              : 'border-transparent text-gray-600'
                           }`}
+                          style={
+                            (developTab as DevelopmentState).subtab !== subtab
+                              ? {
+                                  transition: 'background-color 200ms',
+                                  backgroundColor: 'transparent',
+                                }
+                              : undefined
+                          }
+                          onMouseEnter={(e) => {
+                            if ((developTab as DevelopmentState).subtab !== subtab) {
+                              e.currentTarget.style.backgroundColor = 'rgba(0, 101, 244, 0.2)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if ((developTab as DevelopmentState).subtab !== subtab) {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }
+                          }}
                         >
                           {subtab === 'brief' ? 'Content Brief' : 'Develop Content'}
                         </button>
@@ -701,7 +737,14 @@ ${devState.contentBrief}`;
                           />
                           <label
                             htmlFor="topical-map-file"
-                            className="cursor-pointer px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                            className="cursor-pointer px-4 py-2 bg-blue-100 text-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                            style={{ backgroundColor: '#dbeafe' }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(0, 101, 244, 0.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#dbeafe';
+                            }}
                           >
                             {(developTab as DevelopmentState).topicalMapFile
                               ? `✓ ${(developTab as DevelopmentState).topicalMapFile?.name}`
@@ -1096,7 +1139,16 @@ ${devState.contentBrief}`;
               href="https://aistudio.google.com/app/apikey"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+              className="transition-colors duration-200"
+              style={{ color: '#0065F4' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'rgba(0, 101, 244, 0.2)';
+                e.currentTarget.style.textDecoration = 'underline';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#0065F4';
+                e.currentTarget.style.textDecoration = 'none';
+              }}
             >
               Get your free Gemini API key
             </a>

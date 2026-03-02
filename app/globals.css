@@ -34,7 +34,11 @@ code {
   }
 
   .btn-secondary {
-    @apply btn bg-gray-200 text-gray-900 hover:bg-gray-300;
+    @apply btn bg-gray-200 text-gray-900;
+  }
+
+  .btn-secondary:hover {
+    background-color: rgba(0, 101, 244, 0.2);
   }
 
   .input-field {
@@ -43,5 +47,13 @@ code {
 
   .card {
     @apply bg-white rounded-lg border border-gray-200 shadow-sm;
+  }
+
+  .hover-primary {
+    transition: background-color 200ms;
+  }
+
+  .hover-primary:hover {
+    background-color: rgba(0, 101, 244, 0.2);
   }
 }
