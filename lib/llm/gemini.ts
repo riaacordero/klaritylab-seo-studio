@@ -6,7 +6,14 @@ import { LLMProvider, LLMResponse, LLMMessage, ProviderError } from './types';
  */
 export class GeminiProvider implements LLMProvider {
   private apiKey: string;
-  private model: string = 'gemini-1.5-flash';
+  private model: string = 'gemini-2.5-flash'; // Latest and best available model
+  private readonly availableModels: string[] = [
+    'gemini-2.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+  ];
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.GEMINI_API_KEY || '';
@@ -82,7 +89,33 @@ export class GeminiProvider implements LLMProvider {
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
 
       const client = new GoogleGenerativeAI(this.apiKey);
-      const model = client.getGenerativeModel({ model: this.model });
+      
+      // Try to find an available model
+      let model = null;
+      let lastError = null;
+      
+      for (const modelName of this.availableModels) {
+        try {
+          const testModel = client.getGenerativeModel({ model: modelName });
+          // Test with a simple message to see if the model is actually available
+          await testModel.generateContent('test');
+          model = testModel;
+          this.model = modelName;
+          console.log(`[Gemini] Using model: ${modelName}`);
+          break;
+        } catch (err) {
+          lastError = err;
+          console.log(`[Gemini] Model ${modelName} not available, trying next...`);
+          continue;
+        }
+      }
+      
+      if (!model) {
+        throw new ProviderError(
+          this.getName(),
+          `No available Gemini models found. Last error: ${lastError instanceof Error ? lastError.message : 'Unknown'}`
+        );
+      }
 
       // Filter out system messages and build the prompt
       const userMessages = messages.filter((msg) => msg.role !== 'system');
@@ -116,6 +149,13 @@ export class GeminiProvider implements LLMProvider {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown error';
+
+      // Log full error for debugging
+      console.error('[Gemini API Raw Error]', {
+        message,
+        fullError: error,
+        model: this.model,
+      });
 
       if (message.includes('API_KEY') || message.includes('authentication')) {
         throw new ProviderError(
