@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AgentResponse } from '@/app/api/agent/ask/route';
 
 type TabType = 'interlink' | 'audit' | 'develop';
@@ -61,7 +61,7 @@ export default function AgentInterface() {
     relatedBlogUrls: '',
     prompt: '',
     systemPrompt:
-      'You are an expert SEO consultant specializing in internal linking strategies. Your task is to analyze website content and generate an interlink strategy table. Rules: 1) Exclude self-referencing links, 2) Only use exact text found in the article, 3) Link only in main body paragraphs, 4) Each page referenced only once per article, 5) Match links contextually. Return as table: Anchor Text | Links to (Page URL only)',
+      'Analyse the provided website URL and blog articles. Use the links provided, excluding the article being analyzed. Provide an interlink plan showing anchor texts and target pages. Important rules: 1) Multiple anchor texts and links allowed per blog, 2) Each page referenced maximum once per article, 3) Anchor texts only from blog body sections (main paragraphs), 4) Use ONLY exact text found in the content - no inferences, 5) Match contextually with proper relevance, 6) No self-referencing or same-topic linking, 7) Anchor text must match the concept of target page. Return ONLY a markdown table with 2 columns: | Anchor Text | Links to (Page URL only) | Do NOT include any introductory text, explanation, or additional commentary. Start directly with the table.',
     response: null,
     error: null,
     loading: false,
@@ -71,7 +71,7 @@ export default function AgentInterface() {
     websiteUrl: '',
     prompt: '',
     systemPrompt:
-      'You are an expert content compliance auditor and SEO specialist. Analyze the provided website URL and its content for: 1) Compliance with current standards (especially critical for finance and health content), 2) Content freshness and relevance (identify outdated information), 3) Content intent (navigational, commercial, transactional, or informational), 4) Content type (evergreen vs. time-specific like sales, promos, trends). For each page/article, determine its status: OK/Compliant, Needs Update (outdated or non-compliant), or Subject for Removal (time-specific content that has expired). Provide specific recommendations for updates or removal. Examples: Finance - JobKeeper ended March 28, 2021, so 2026 references should be removed. Health - outdated medical recommendations should be updated. Return results as a structured audit report with Status and Recommendations columns.',
+      'You are an expert content compliance auditor and SEO specialist. Analyze the provided website URL and its content. Evaluate: 1. Compliance & Freshness - Check for outdated information and alignment with current standards (especially critical for finance and health). Assess accuracy, clarity, readability, E-A-T, and SEO best practices. 2. Content Intent - Identify whether content is navigational, commercial, transactional, or informational. 3. Content Type - Determine if evergreen or time-specific (sales, promotions, trends). 4. Status - Classify as OK/Compliant, Needs Update, or Subject for Removal. 5. Recommendations - Provide specific, actionable recommendations. Format with ### for main sections and bullet points. Avoid tables, dashes, and separators. Provide only clean, professional markdown formatted text. Do NOT output any tables or tabular data. Focus on clear sections with bullet points and concise information.',
     response: null,
     error: null,
     loading: false,
@@ -97,6 +97,14 @@ export default function AgentInterface() {
     error: null,
     loading: false,
   });
+
+  // Track response changes
+  useEffect(() => {
+    const currentTab = getCurrentTab();
+    if (currentTab.response) {
+      console.log('[useEffect] Response updated:', currentTab.response);
+    }
+  }, [interlinkTab.response, auditTab.response, developTab.response]);
 
   // Get current tab state
   const getCurrentTab = (): TabState | InterlinkState | AuditState | DevelopmentState => {
@@ -483,17 +491,27 @@ Provide detailed copy for each essential page section.`;
       });
 
       const data = (await res.json()) as AgentResponse;
-      setCurrentTab({ response: data });
-
+      console.log('[handleSubmit] Response received:', data);
+      
+      // Set both response and error in one call to avoid state batching issues
       if (!data.success) {
-        setCurrentTab({ error: data.error?.message || 'An error occurred' });
+        setCurrentTab({ 
+          response: data,
+          error: data.error?.message || 'An error occurred',
+          loading: false,
+        });
+      } else {
+        setCurrentTab({ 
+          response: data,
+          error: null,
+          loading: false,
+        });
       }
     } catch (err) {
       setCurrentTab({
         error: err instanceof Error ? err.message : 'Failed to send request',
+        loading: false,
       });
-    } finally {
-      setCurrentTab({ loading: false });
     }
   };
 
@@ -1336,16 +1354,10 @@ Provide detailed copy for each essential page section.`;
                           <thead>
                             <tr className="bg-blue-100">
                               <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                                Article
+                                Anchor Text
                               </th>
                               <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                                Page URL
-                              </th>
-                              <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                                Keyword
-                              </th>
-                              <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                                Target Page URL
+                                Links to
                               </th>
                             </tr>
                           </thead>
@@ -1359,14 +1371,12 @@ Provide detailed copy for each essential page section.`;
                                     idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                                   }
                                 >
-                                  {row.map((cell, cellIdx) => (
-                                    <td
-                                      key={cellIdx}
-                                      className="border border-gray-300 px-4 py-2"
-                                    >
-                                      {cell}
-                                    </td>
-                                  ))}
+                                  <td className="border border-gray-300 px-4 py-2">
+                                    {row[0]}
+                                  </td>
+                                  <td className="border border-gray-300 px-4 py-2 break-words">
+                                    {row[1] || row[0]}
+                                  </td>
                                 </tr>
                               ))}
                           </tbody>
@@ -1380,7 +1390,15 @@ Provide detailed copy for each essential page section.`;
                       </div>
                     )}
                   </>
+                ) : activeTab === 'audit' ? (
+                  // Content Audit - display as formatted markdown, not a table
+                  <div className="prose prose-sm max-w-none mb-6 text-gray-800">
+                    <div className="whitespace-pre-wrap break-words leading-relaxed">
+                      {currentTab.response.data.content}
+                    </div>
+                  </div>
                 ) : (
+                  // Content Development - regular formatted text
                   <div className="prose prose-sm max-w-none mb-6 text-gray-800">
                     <div className="whitespace-pre-wrap break-words">
                       {currentTab.response.data.content}
