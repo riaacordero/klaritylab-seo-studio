@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { AgentResponse } from '@/app/api/agent/ask/route';
 
 type TabType = 'interlink' | 'audit' | 'develop';
-type DevelopmentSubtab = 'brief' | 'content' | 'copywriting';
+type DevelopmentSubtab = 'brief' | 'copywriting';
 type CopywritingType = 'blog' | 'homepage' | 'essential' | 'faq';
 
 interface TabState {
@@ -288,31 +288,6 @@ Topical Map Context:
 ${devState.topicalMapText || '[Topical map file uploaded]'}
 
 Cluster Keywords: ${devState.clusterKeywords}`;
-        } else if (devState.subtab === 'content') {
-          // Content Development from Brief
-          maxTokens = 5000;
-
-          if (!devState.contentBrief.trim()) {
-            setCurrentTab({
-              loading: false,
-              error: 'Please paste the content brief or go back to the "Content Brief" tab to generate one',
-            });
-            return;
-          }
-
-          prompt = `Using the following content brief, develop a comprehensive, well-structured article that:
-
-1. Follows the brief's outline and structure
-2. Incorporates the emotional hook for the target audience
-3. Answers all questions posed in the brief
-4. Integrates expert knowledge and insights
-5. Is SEO-optimized with keyword integration
-6. Includes proper headings, subheadings, and formatting
-7. Has a compelling introduction and conclusion
-8. Includes a call-to-action if appropriate
-
-Content Brief:
-${devState.contentBrief}`;
         } else if (devState.subtab === 'copywriting') {
           // Copywriting Section
           maxTokens = 5000;
@@ -543,8 +518,6 @@ Provide detailed copy for each essential page section.`;
         const devState = developTab as DevelopmentState;
         if (devState.subtab === 'brief') {
           return 'Generate content briefs for topical experts to develop high-quality, expert-driven content';
-        } else if (devState.subtab === 'content') {
-          return 'Develop full articles from content briefs with expert knowledge integration';
         } else {
           return 'Professional copywriting for blogs, homepages, essential pages, and FAQs optimized for AI Overviews and E-E-A-T';
         }
@@ -691,9 +664,9 @@ Provide detailed copy for each essential page section.`;
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-8">
           {/* Input Section */}
-          <div className="lg:col-span-2">
+          <div>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Tab Description */}
               <div className="card p-6 bg-blue-50 border border-blue-200">
@@ -862,7 +835,7 @@ Provide detailed copy for each essential page section.`;
                   {/* Development Subtabs */}
                   <div className="card p-4 border-b-2 border-gray-200 bg-gray-50">
                     <div className="flex gap-2 sm:gap-0">
-                      {(['brief', 'content', 'copywriting'] as DevelopmentSubtab[]).map((subtab) => (
+                      {(['brief', 'copywriting'] as DevelopmentSubtab[]).map((subtab) => (
                         <button
                           key={subtab}
                           type="button"
@@ -894,7 +867,7 @@ Provide detailed copy for each essential page section.`;
                             }
                           }}
                         >
-                          {subtab === 'brief' ? 'Content Brief' : subtab === 'content' ? 'Develop Content' : 'Copywriting'}
+                          {subtab === 'brief' ? 'Content Brief' : 'Copywriting'}
                         </button>
                       ))}
                     </div>
@@ -1004,42 +977,6 @@ Provide detailed copy for each essential page section.`;
                         <p className="text-xs text-gray-500 mt-2">
                           Enter keywords separated by commas or line breaks
                         </p>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Develop Content Subtab */}
-                  {(developTab as DevelopmentState).subtab === 'content' && (
-                    <>
-                      {/* Content Brief Input */}
-                      <div className="card p-6">
-                        <label className="block text-sm font-semibold text-gray-700 mb-3">
-                          Content Brief *
-                        </label>
-                        <textarea
-                          value={(developTab as DevelopmentState).contentBrief}
-                          onChange={(e) => setCurrentTab({ contentBrief: e.target.value })}
-                          placeholder={
-                            'Paste the content brief here. You can:\n\n1. Generate one from the "Content Brief" tab above\n2. Paste a previously generated brief\n3. Paste a brief from another source\n\nThe AI will use this brief to develop a comprehensive article.'
-                          }
-                          rows={8}
-                          className="input-field resize-none"
-                          disabled={currentTab.loading}
-                        />
-                        <p className="text-xs text-gray-500 mt-2">
-                          Paste the content brief that was previously generated. This will be used as a guide for content development.
-                        </p>
-                      </div>
-
-                      {/* Info Box */}
-                      <div className="card p-6 bg-blue-50 border border-blue-200">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-2">How This Works</h3>
-                        <ol className="text-xs text-gray-700 space-y-2 list-decimal list-inside">
-                          <li>Start with the <strong>Content Brief</strong> tab to generate a brief from your topical map</li>
-                          <li>Copy the generated brief below (or paste your own brief)</li>
-                          <li>Let the AI develop a full article following the brief structure</li>
-                          <li>The AI will incorporate the emotional hook, outline, and expert questions into the final article</li>
-                        </ol>
                       </div>
                     </>
                   )}
@@ -1333,15 +1270,11 @@ Provide detailed copy for each essential page section.`;
                           (developTab as DevelopmentState).pageTitles.trim() &&
                           (developTab as DevelopmentState).clusterKeywords.trim()
                         )
-                      : (developTab as DevelopmentState).subtab === 'content'
+                      : (developTab as DevelopmentState).copywritingType === 'blog'
                       ? !(developTab as DevelopmentState).contentBrief.trim()
-                      : (developTab as DevelopmentState).subtab === 'copywriting'
-                      ? (developTab as DevelopmentState).copywritingType === 'blog'
-                        ? !(developTab as DevelopmentState).contentBrief.trim()
-                        : (developTab as DevelopmentState).copywritingType === 'faq'
-                        ? !((developTab as DevelopmentState).serpQuestionsFile && (developTab as DevelopmentState).audienceAnalysisFile)
-                        : !((developTab as DevelopmentState).websiteUrl.trim())
-                      : false
+                      : (developTab as DevelopmentState).copywritingType === 'faq'
+                      ? !((developTab as DevelopmentState).serpQuestionsFile && (developTab as DevelopmentState).audienceAnalysisFile)
+                      : !((developTab as DevelopmentState).websiteUrl.trim())
                     : false)
                 }
                 className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1357,8 +1290,6 @@ Provide detailed copy for each essential page section.`;
                   'Analyze Content'
                 ) : (developTab as DevelopmentState).subtab === 'brief' ? (
                   'Generate Content Brief'
-                ) : (developTab as DevelopmentState).subtab === 'content' ? (
-                  'Develop Article'
                 ) : (developTab as DevelopmentState).copywritingType === 'blog' ? (
                   'Generate Blog Article'
                 ) : (developTab as DevelopmentState).copywritingType === 'faq' ? (
@@ -1371,89 +1302,6 @@ Provide detailed copy for each essential page section.`;
               </button>
             </form>
           </div>
-
-          {/* Sidebar - Tips */}
-          <aside className="lg:col-span-1">
-            <div className="card p-6 space-y-4 sticky top-4">
-              <h3 className="font-semibold text-gray-900">Tips for Best Results</h3>
-              <ul className="text-sm text-gray-600 space-y-3">
-                {activeTab === 'interlink' && (
-                  <>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600">•</span>
-                      <span>Include your website structure and page relationships</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600">•</span>
-                      <span>Mention your main content pillars and clusters</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600">•</span>
-                      <span>Provide current interlinking examples if available</span>
-                    </li>
-                  </>
-                )}
-                {activeTab === 'audit' && (
-                  <>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600">•</span>
-                      <span>Paste your content verbatim for accurate analysis</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600">•</span>
-                      <span>Include target keywords you want to rank for</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600">•</span>
-                      <span>Mention your audience and page purpose</span>
-                    </li>
-                  </>
-                )}
-                {activeTab === 'develop' && (
-                  <>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600">•</span>
-                      <span>Define your target audience clearly</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600">•</span>
-                      <span>Include target keywords and search intent</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600">•</span>
-                      <span>Specify desired content length and format</span>
-                    </li>
-                  </>
-                )}
-              </ul>
-
-              <div className="pt-4 border-t border-gray-200">
-                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                  Example Queries
-                </h4>
-                <div className="text-xs text-gray-500 space-y-2">
-                  {activeTab === 'interlink' && (
-                    <>
-                      <p>&quot;Create interlinking for SaaS blog with 20 pillar articles&quot;</p>
-                      <p>&quot;Link 15 new blog posts to homepage and service pages&quot;</p>
-                    </>
-                  )}
-                  {activeTab === 'audit' && (
-                    <>
-                      <p>&quot;Audit this landing page for keyword optimization&quot;</p>
-                      <p>&quot;Review this article for technical SEO issues&quot;</p>
-                    </>
-                  )}
-                  {activeTab === 'develop' && (
-                    <>
-                      <p>&quot;Write 2000-word blog post about SaaS pricing&quot;</p>
-                      <p>&quot;Create product page copy for B2B software&quot;</p>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </aside>
         </div>
 
         {/* Response Section */}
@@ -1602,29 +1450,7 @@ Provide detailed copy for each essential page section.`;
 
         {/* Footer */}
         <footer className="text-center mt-16 text-sm text-gray-600">
-          <p>
-            Built with Next.js, TypeScript, and{' '}
-            <span className="font-semibold">Google Gemini API</span>
-          </p>
-          <p className="mt-2">
-            <a
-              href="https://aistudio.google.com/app/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="transition-colors duration-200"
-              style={{ color: '#0065F4' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'rgba(0, 101, 244, 0.2)';
-                e.currentTarget.style.textDecoration = 'underline';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#0065F4';
-                e.currentTarget.style.textDecoration = 'none';
-              }}
-            >
-              Get your free Gemini API key
-            </a>
-          </p>
+          <p>Built with ❤️ by Klarity Lab</p>
         </footer>
       </div>
     </div>
