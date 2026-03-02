@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { AgentResponse } from '@/app/api/agent/ask/route';
 
 type TabType = 'interlink' | 'audit' | 'develop';
-type DevelopmentSubtab = 'brief' | 'content';
+type DevelopmentSubtab = 'brief' | 'content' | 'copywriting';
+type CopywritingType = 'blog' | 'homepage' | 'essential' | 'faq';
 
 interface TabState {
   prompt: string;
@@ -43,6 +44,11 @@ export default function AgentInterface() {
     clusterKeywords: string;
     selectedTopic: string;
     contentBrief: string;
+    copywritingType: CopywritingType;
+    websiteUrl: string;
+    competitorUrl: string;
+    serpQuestionsFile: File | null;
+    audienceAnalysisFile: File | null;
   }
 
   const [interlinkTab, setInterlinkTab] = useState<InterlinkState>({
@@ -79,6 +85,11 @@ export default function AgentInterface() {
     clusterKeywords: '',
     selectedTopic: '',
     contentBrief: '',
+    copywritingType: 'blog',
+    websiteUrl: '',
+    competitorUrl: '',
+    serpQuestionsFile: null,
+    audienceAnalysisFile: null,
     prompt: '',
     systemPrompt:
       'You are an SEO copywriter with great knowledge about writing content briefs for topical experts. Review the provided topical map and supporting information to develop comprehensive content briefs that allow topical experts to be interviewed and integrate expert-level knowledge for AI-assisted content development.',
@@ -277,7 +288,7 @@ Topical Map Context:
 ${devState.topicalMapText || '[Topical map file uploaded]'}
 
 Cluster Keywords: ${devState.clusterKeywords}`;
-        } else {
+        } else if (devState.subtab === 'content') {
           // Content Development from Brief
           maxTokens = 5000;
 
@@ -302,6 +313,183 @@ Cluster Keywords: ${devState.clusterKeywords}`;
 
 Content Brief:
 ${devState.contentBrief}`;
+        } else if (devState.subtab === 'copywriting') {
+          // Copywriting Section
+          maxTokens = 5000;
+
+          if (devState.copywritingType === 'blog') {
+            // Blog Article Copywriting
+            if (!devState.contentBrief.trim()) {
+              setCurrentTab({
+                loading: false,
+                error: 'Please provide a content brief for blog article generation',
+              });
+              return;
+            }
+
+            const systemPrompt = `You are an expert SEO copywriter specializing in creating optimized blog content that ranks for AI Overviews and adheres to E-E-A-T principles.
+
+Your task is to write a comprehensive blog article based on the provided content brief. Follow these guidelines:
+
+STRUCTURE & OPENING:
+- Create a compelling opening that hooks the reader within the first 50 words
+- Address the reader's intent and emotional motivation
+- Include relevant context about why this topic matters
+
+E-E-A-T IMPLEMENTATION:
+- Expertise: Demonstrate deep knowledge of the subject matter
+- Experience: Include practical examples and real-world applications
+- Authoritativeness: Reference credible sources and industry standards
+- Trustworthiness: Be transparent about limitations and provide citations
+
+CONTENT GUIDELINES:
+- Use clear, scannable formatting with descriptive H2 and H3 headings
+- Break complex concepts into digestible sections
+- Use bullet points and lists where appropriate
+- Include specific examples and case studies
+- Address common questions and misconceptions
+- Provide actionable takeaways
+
+AI OVERVIEW OPTIMIZATION:
+- Structure content with clear answers to user questions
+- Use structured data where relevant
+- Include data-backed claims and statistics
+- Provide comprehensive coverage of the topic
+- Use natural language that aligns with how people search
+
+CITATIONS & SOURCES:
+- Include in-text citations for claims and statistics
+- Provide a "Sources" or "References" section at the end
+- Link to authoritative external sources
+- Use proper markdown formatting for links
+
+CALL-TO-ACTION:
+- End with a relevant CTA that matches the content intent
+- Keep CTAs subtle and value-focused
+
+Write in a professional yet conversational tone appropriate for the target audience.`;
+
+            setCurrentTab({ systemPrompt });
+            prompt = `Create a comprehensive blog article based on this content brief:
+
+${devState.contentBrief}`;
+          } else if (devState.copywritingType === 'faq') {
+            // FAQ Copywriting
+            if (!devState.serpQuestionsFile || !devState.audienceAnalysisFile) {
+              setCurrentTab({
+                loading: false,
+                error: 'Please upload both SERP questions and audience analysis files',
+              });
+              return;
+            }
+
+            const systemPrompt = `You are a CX Research Analyst and Content Strategist specializing in creating FAQ content optimized for AI Overviews.
+
+Your task is to create a comprehensive FAQ article that addresses customer questions, provides expert answers, and ranks for AI Overviews.
+
+FAQ STRUCTURE GUIDELINES:
+- Use MECE (Mutually Exclusive, Collectively Exhaustive) framework
+- Group related questions into logical sections
+- Use clear H2 headings for question categories
+- Use H3 headings or strong text for individual questions
+
+QUESTION HANDLING:
+- Reframe and expand questions for clarity and searchability
+- Address the intent behind each question
+- Include variations of common questions
+- Expand brief SERP questions with context
+
+ANSWER QUALITY:
+- Provide comprehensive answers (150-300 words per question)
+- Start with a direct, clear answer (first 1-2 sentences)
+- Support with explanations, examples, and details
+- Use bullet points for lists within answers
+- Include specific data points and statistics
+
+AI OVERVIEW OPTIMIZATION:
+- Structure answers with clear topic sentences
+- Use natural language that matches search queries
+- Include relevant keywords naturally
+- Provide complete information in the answer itself
+
+AUDIENCE ALIGNMENT:
+- Tailor technical depth to audience knowledge level
+- Address pain points identified in audience analysis
+- Use terminology familiar to your audience
+- Anticipate follow-up questions
+
+CITATIONS & SOURCES:
+- Include credible source references
+- Link to authoritative resources
+- Use inline citations where appropriate
+- Add a "Sources" section at the end
+
+FORMATTING:
+- Use markdown for proper formatting
+- Bold key terms and important phrases
+- Use italics for emphasis
+- Include section breaks for readability
+
+Write in a tone that builds trust and demonstrates expertise appropriate for the audience.`;
+
+            setCurrentTab({ systemPrompt });
+            prompt = `Create a comprehensive FAQ article based on the SERP questions and audience analysis provided. Structure the FAQ using MECE principles and optimize for AI Overviews.
+
+[Audience analysis and SERP questions files provided above]`;
+          } else if (devState.copywritingType === 'homepage') {
+            // Homepage Copywriting
+            if (!devState.websiteUrl.trim()) {
+              setCurrentTab({
+                loading: false,
+                error: 'Please provide your website URL for homepage copy generation',
+              });
+              return;
+            }
+
+            prompt = `Create compelling homepage copy for: ${devState.websiteUrl}${
+              devState.competitorUrl ? `\n\nFor reference, analyze this competitor homepage: ${devState.competitorUrl}` : ''
+            }
+
+The homepage copy should:
+1. Establish immediate value proposition within the first section
+2. Address the primary customer pain points
+3. Highlight unique selling propositions
+4. Include trust signals and social proof
+5. Use persuasive copywriting techniques
+6. Include clear calls-to-action
+7. Follow conversion optimization best practices
+8. Be optimized for mobile viewing
+
+Structure the copy with clear sections and compelling headlines.`;
+          } else {
+            // Essential Pages Copywriting
+            if (!devState.websiteUrl.trim()) {
+              setCurrentTab({
+                loading: false,
+                error: 'Please provide your website URL for essential page copy generation',
+              });
+              return;
+            }
+
+            prompt = `Create content for essential pages on: ${devState.websiteUrl}${
+              devState.competitorUrl ? `\n\nFor reference, analyze this competitor website: ${devState.competitorUrl}` : ''
+            }
+
+Generate copy for these essential pages:
+1. About Us - Company story, mission, values, team expertise
+2. Services/Products - Clear descriptions, benefits, differentiators
+3. Contact Us - Clear information, multiple contact methods, response expectations
+
+Each section should:
+- Be comprehensive but scannable
+- Address customer needs and questions
+- Include trust-building elements
+- Use clear calls-to-action
+- Optimize for both users and search engines
+- Follow conversion best practices
+
+Provide detailed copy for each essential page section.`;
+          }
         }
       }
 
@@ -353,9 +541,13 @@ ${devState.contentBrief}`;
         return 'Comprehensive content audit for SEO optimization, readability, and quality improvements';
       case 'develop':
         const devState = developTab as DevelopmentState;
-        return devState.subtab === 'brief'
-          ? 'Generate content briefs for topical experts to develop high-quality, expert-driven content'
-          : 'Develop full articles from content briefs with expert knowledge integration';
+        if (devState.subtab === 'brief') {
+          return 'Generate content briefs for topical experts to develop high-quality, expert-driven content';
+        } else if (devState.subtab === 'content') {
+          return 'Develop full articles from content briefs with expert knowledge integration';
+        } else {
+          return 'Professional copywriting for blogs, homepages, essential pages, and FAQs optimized for AI Overviews and E-E-A-T';
+        }
     }
   };
 
@@ -670,7 +862,7 @@ ${devState.contentBrief}`;
                   {/* Development Subtabs */}
                   <div className="card p-4 border-b-2 border-gray-200 bg-gray-50">
                     <div className="flex gap-2 sm:gap-0">
-                      {(['brief', 'content'] as DevelopmentSubtab[]).map((subtab) => (
+                      {(['brief', 'content', 'copywriting'] as DevelopmentSubtab[]).map((subtab) => (
                         <button
                           key={subtab}
                           type="button"
@@ -702,7 +894,7 @@ ${devState.contentBrief}`;
                             }
                           }}
                         >
-                          {subtab === 'brief' ? 'Content Brief' : 'Develop Content'}
+                          {subtab === 'brief' ? 'Content Brief' : subtab === 'content' ? 'Develop Content' : 'Copywriting'}
                         </button>
                       ))}
                     </div>
@@ -851,6 +1043,270 @@ ${devState.contentBrief}`;
                       </div>
                     </>
                   )}
+
+                  {/* Copywriting Subtab */}
+                  {(developTab as DevelopmentState).subtab === 'copywriting' && (
+                    <>
+                      {/* Copywriting Type Selector */}
+                      <div className="card p-6">
+                        <label className="block text-sm font-semibold text-gray-700 mb-4">
+                          Select Copywriting Type *
+                        </label>
+                        <div className="space-y-3">
+                          {(['blog', 'homepage', 'essential', 'faq'] as const).map((type) => (
+                            <label key={type} className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors">
+                              <input
+                                type="radio"
+                                name="copywriting-type"
+                                value={type}
+                                checked={(developTab as DevelopmentState).copywritingType === type}
+                                onChange={(e) => setCurrentTab({ copywritingType: e.target.value as CopywritingType })}
+                                className="w-4 h-4 text-blue-600"
+                                disabled={currentTab.loading}
+                              />
+                              <div>
+                                <span className="font-medium text-gray-700">
+                                  {type === 'blog' ? 'Blog Article' : type === 'homepage' ? 'Homepage Copy' : type === 'essential' ? 'Essential Pages' : 'FAQs'}
+                                </span>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  {type === 'blog' ? 'Generate blog articles from content briefs' : type === 'homepage' ? 'Create compelling homepage copy' : type === 'essential' ? 'Write essential page content' : 'Create FAQ articles from SERP data'}
+                                </p>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Blog Article Copywriting */}
+                      {(developTab as DevelopmentState).copywritingType === 'blog' && (
+                        <>
+                          <div className="card p-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">
+                              Content Brief File *
+                            </label>
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                              <input
+                                type="file"
+                                accept=".txt,.md,.docx,.pdf"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (event) => {
+                                      const content = event.target?.result as string;
+                                      setCurrentTab({ contentBrief: content });
+                                    };
+                                    reader.readAsText(file);
+                                  }
+                                }}
+                                disabled={currentTab.loading}
+                                className="hidden"
+                                id="blog-brief-input"
+                              />
+                              <label htmlFor="blog-brief-input" className="cursor-pointer">
+                                <p className="text-gray-600">📄 Click to upload your content brief</p>
+                                <p className="text-xs text-gray-500 mt-1">Supported: TXT, MD, DOCX, PDF</p>
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="card p-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">
+                              Content Brief (or paste below)
+                            </label>
+                            <textarea
+                              value={(developTab as DevelopmentState).contentBrief}
+                              onChange={(e) => setCurrentTab({ contentBrief: e.target.value })}
+                              placeholder="Paste your content brief here..."
+                              rows={8}
+                              className="input-field resize-none"
+                              disabled={currentTab.loading}
+                            />
+                            <p className="text-xs text-gray-500 mt-2">
+                              Your content brief will be used to generate a high-quality blog article with E-E-A-T focus.
+                            </p>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Homepage/Essential Pages Copywriting */}
+                      {(developTab as DevelopmentState).copywritingType === 'homepage' && (
+                        <>
+                          <div className="card p-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">
+                              Website URL *
+                            </label>
+                            <input
+                              type="url"
+                              value={(developTab as DevelopmentState).websiteUrl}
+                              onChange={(e) => setCurrentTab({ websiteUrl: e.target.value })}
+                              placeholder="https://example.com"
+                              className="input-field"
+                              disabled={currentTab.loading}
+                            />
+                            <p className="text-xs text-gray-500 mt-2">
+                              Enter your website URL for analysis and copy generation.
+                            </p>
+                          </div>
+
+                          <div className="card p-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">
+                              Competitor URL (Optional)
+                            </label>
+                            <input
+                              type="url"
+                              value={(developTab as DevelopmentState).competitorUrl}
+                              onChange={(e) => setCurrentTab({ competitorUrl: e.target.value })}
+                              placeholder="https://competitor.com"
+                              className="input-field"
+                              disabled={currentTab.loading}
+                            />
+                            <p className="text-xs text-gray-500 mt-2">
+                              Optional: Provide a competitor website URL to analyze their approach.
+                            </p>
+                          </div>
+                        </>
+                      )}
+
+                      {(developTab as DevelopmentState).copywritingType === 'essential' && (
+                        <>
+                          <div className="card p-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">
+                              Website URL *
+                            </label>
+                            <input
+                              type="url"
+                              value={(developTab as DevelopmentState).websiteUrl}
+                              onChange={(e) => setCurrentTab({ websiteUrl: e.target.value })}
+                              placeholder="https://example.com"
+                              className="input-field"
+                              disabled={currentTab.loading}
+                            />
+                            <p className="text-xs text-gray-500 mt-2">
+                              Enter your website URL to generate essential page content.
+                            </p>
+                          </div>
+
+                          <div className="card p-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">
+                              Competitor URL (Optional)
+                            </label>
+                            <input
+                              type="url"
+                              value={(developTab as DevelopmentState).competitorUrl}
+                              onChange={(e) => setCurrentTab({ competitorUrl: e.target.value })}
+                              placeholder="https://competitor.com"
+                              className="input-field"
+                              disabled={currentTab.loading}
+                            />
+                            <p className="text-xs text-gray-500 mt-2">
+                              Optional: Analyze competitor pages to enhance your content strategy.
+                            </p>
+                          </div>
+                        </>
+                      )}
+
+                      {/* FAQ Copywriting */}
+                      {(developTab as DevelopmentState).copywritingType === 'faq' && (
+                        <>
+                          <div className="card p-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">
+                              SERP Questions File *
+                            </label>
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                              <input
+                                type="file"
+                                accept=".txt,.csv,.xlsx,.pdf"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) setCurrentTab({ serpQuestionsFile: file });
+                                }}
+                                disabled={currentTab.loading}
+                                className="hidden"
+                                id="serp-questions-input"
+                              />
+                              <label htmlFor="serp-questions-input" className="cursor-pointer">
+                                <p className="text-gray-600">📄 Click to upload SERP questions</p>
+                                <p className="text-xs text-gray-500 mt-1">Supported: TXT, CSV, XLSX, PDF</p>
+                              </label>
+                            </div>
+                            {(developTab as DevelopmentState).serpQuestionsFile && (
+                              <p className="text-xs text-green-600 mt-2">
+                                ✓ {(developTab as DevelopmentState).serpQuestionsFile?.name}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="card p-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">
+                              Audience Analysis File *
+                            </label>
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                              <input
+                                type="file"
+                                accept=".txt,.csv,.xlsx,.pdf"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) setCurrentTab({ audienceAnalysisFile: file });
+                                }}
+                                disabled={currentTab.loading}
+                                className="hidden"
+                                id="audience-analysis-input"
+                              />
+                              <label htmlFor="audience-analysis-input" className="cursor-pointer">
+                                <p className="text-gray-600">📄 Click to upload audience analysis</p>
+                                <p className="text-xs text-gray-500 mt-1">Supported: TXT, CSV, XLSX, PDF</p>
+                              </label>
+                            </div>
+                            {(developTab as DevelopmentState).audienceAnalysisFile && (
+                              <p className="text-xs text-green-600 mt-2">
+                                ✓ {(developTab as DevelopmentState).audienceAnalysisFile?.name}
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Info Box */}
+                      <div className="card p-6 bg-blue-50 border border-blue-200">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-2">How This Works</h3>
+                        <ol className="text-xs text-gray-700 space-y-2 list-decimal list-inside">
+                          {(developTab as DevelopmentState).copywritingType === 'blog' && (
+                            <>
+                              <li>Upload or paste your content brief</li>
+                              <li>The AI generates a professional blog article</li>
+                              <li>Content follows E-E-A-T principles with proper citations</li>
+                              <li>Output includes expert insights and comprehensive coverage</li>
+                            </>
+                          )}
+                          {(developTab as DevelopmentState).copywritingType === 'homepage' && (
+                            <>
+                              <li>Enter your website URL</li>
+                              <li>Optionally add a competitor URL for benchmarking</li>
+                              <li>The AI generates compelling homepage copy</li>
+                              <li>Copy is optimized for conversions and brand alignment</li>
+                            </>
+                          )}
+                          {(developTab as DevelopmentState).copywritingType === 'essential' && (
+                            <>
+                              <li>Enter your website URL</li>
+                              <li>Optionally add a competitor URL for comparison</li>
+                              <li>The AI creates content for essential pages (About, Contact, etc.)</li>
+                              <li>Content is structured for user engagement and conversions</li>
+                            </>
+                          )}
+                          {(developTab as DevelopmentState).copywritingType === 'faq' && (
+                            <>
+                              <li>Upload your SERP questions and audience analysis files</li>
+                              <li>The AI analyzes questions and audience needs</li>
+                              <li>Generates comprehensive FAQ article with expert answers</li>
+                              <li>Output follows MECE structure with proper citations</li>
+                            </>
+                          )}
+                        </ol>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
@@ -877,7 +1333,15 @@ ${devState.contentBrief}`;
                           (developTab as DevelopmentState).pageTitles.trim() &&
                           (developTab as DevelopmentState).clusterKeywords.trim()
                         )
-                      : !(developTab as DevelopmentState).contentBrief.trim()
+                      : (developTab as DevelopmentState).subtab === 'content'
+                      ? !(developTab as DevelopmentState).contentBrief.trim()
+                      : (developTab as DevelopmentState).subtab === 'copywriting'
+                      ? (developTab as DevelopmentState).copywritingType === 'blog'
+                        ? !(developTab as DevelopmentState).contentBrief.trim()
+                        : (developTab as DevelopmentState).copywritingType === 'faq'
+                        ? !((developTab as DevelopmentState).serpQuestionsFile && (developTab as DevelopmentState).audienceAnalysisFile)
+                        : !((developTab as DevelopmentState).websiteUrl.trim())
+                      : false
                     : false)
                 }
                 className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -893,8 +1357,16 @@ ${devState.contentBrief}`;
                   'Analyze Content'
                 ) : (developTab as DevelopmentState).subtab === 'brief' ? (
                   'Generate Content Brief'
-                ) : (
+                ) : (developTab as DevelopmentState).subtab === 'content' ? (
                   'Develop Article'
+                ) : (developTab as DevelopmentState).copywritingType === 'blog' ? (
+                  'Generate Blog Article'
+                ) : (developTab as DevelopmentState).copywritingType === 'faq' ? (
+                  'Generate FAQ Article'
+                ) : (developTab as DevelopmentState).copywritingType === 'homepage' ? (
+                  'Generate Homepage Copy'
+                ) : (
+                  'Generate Essential Page Copy'
                 )}
               </button>
             </form>
