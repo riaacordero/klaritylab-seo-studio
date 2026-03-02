@@ -71,7 +71,7 @@ export default function AgentInterface() {
     websiteUrl: '',
     prompt: '',
     systemPrompt:
-      'You are an expert content compliance auditor and SEO specialist. Analyze the provided website URL and its content. Evaluate: 1. Compliance & Freshness - Check for outdated information and alignment with current standards (especially critical for finance and health). Assess accuracy, clarity, readability, E-A-T, and SEO best practices. 2. Content Intent - Identify whether content is navigational, commercial, transactional, or informational. 3. Content Type - Determine if evergreen or time-specific (sales, promotions, trends). 4. Status - Classify as OK/Compliant, Needs Update, or Subject for Removal. 5. Recommendations - Provide specific, actionable recommendations. Format with ### for main sections and bullet points. Avoid tables, dashes, and separators. Provide only clean, professional markdown formatted text. Do NOT output any tables or tabular data. Focus on clear sections with bullet points and concise information.',
+      'You are an expert content compliance auditor and SEO specialist. Analyze the provided website URL and article. Return results in EXACTLY this format, with no deviations:\n\nContent Intent: [Choose ONE: Informational, Commercial, Transactional, or Navigational]\n\nCompliance & Freshness Evaluation: [Compliant or Non-Compliant]\n[If Compliant, write: "No further recommendations needed"]\n[If Non-Compliant, list specific compliance issues and recommendations to fix them]\n\nEEAT: [Choose ONE: Weak, Moderate, or Strong]\n[If Weak, list specific issues and recommendations to improve]\n[If Moderate, list specific recommendations to make it Strong]\n[If Strong, write: "No further recommendations needed"]\n\nSEO Best Practices:\nTitle Tag: [X characters] ([OK/Exceeds limit])\nMeta Description: [X characters] ([OK/Exceeds limit])\nURL Slug: [OK (mirrors article title) OR Needs Improvement (lacking article title)]\nHeading Structure: [OK Heading structure OR provide specific recommendations]\nInternal Linking: [OK (good use of links to related pages) OR Needs Improvement (few links, low value) OR Missing (no internal links)]\nExternal Linking: [OK (authoritative sources cited) OR Needs Improvement (few links, low quality) OR Missing (no external links)]\n\nIMPORTANT: Only include recommendations for items that are NOT OK, NOT Compliant, or NOT Strong. Skip detailed recommendations for items marked OK or "No further recommendations needed". Output only the specific evaluation and necessary recommendations, nothing else.',
     response: null,
     error: null,
     loading: false,
@@ -540,6 +540,59 @@ Provide detailed copy for each essential page section.`;
           return 'Professional copywriting for blogs, homepages, essential pages, and FAQs optimized for AI Overviews and E-E-A-T';
         }
     }
+  };
+
+  // Parse and format Content Audit results
+  const formatAuditResults = (content: string) => {
+    const lines = content.split('\n').filter(line => line.trim());
+    
+    return (
+      <div className="space-y-6">
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (!trimmed) return null;
+          
+          // Section headers (e.g., "Content Intent:", "Compliance & Freshness Evaluation:")
+          if (trimmed.includes(':') && !trimmed.startsWith('-')) {
+            const [label, ...valueParts] = trimmed.split(':');
+            const value = valueParts.join(':').trim();
+            
+            if (label.includes('Compliance') || label.includes('Intent') || label.includes('EEAT') || label.includes('Title Tag') || label.includes('Meta Description') || label.includes('URL Slug') || label.includes('Heading Structure') || label.includes('Internal Linking') || label.includes('External Linking') || label.includes('SEO Best Practices')) {
+              return (
+                <div key={idx} className="space-y-2">
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-gray-900">{label.trim()}:</span>
+                    {value && <span className="text-gray-800 ml-0">{value}</span>}
+                  </div>
+                </div>
+              );
+            }
+            
+            return (
+              <div key={idx} className="ml-4 text-gray-800">
+                <span className="font-medium">{label.trim()}:</span> {value}
+              </div>
+            );
+          }
+          
+          // Bullet points for additional recommendations
+          if (trimmed.startsWith('-') || trimmed.startsWith('•')) {
+            return (
+              <div key={idx} className="ml-6 text-gray-800">
+                • {trimmed.replace(/^[-•]\s*/, '')}
+              </div>
+            );
+          }
+          
+          // Regular text
+          return (
+            <div key={idx} className="text-gray-800">
+              {trimmed}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   // Parse interlink table from AI response
@@ -1391,11 +1444,9 @@ Provide detailed copy for each essential page section.`;
                     )}
                   </>
                 ) : activeTab === 'audit' ? (
-                  // Content Audit - display as formatted markdown, not a table
-                  <div className="prose prose-sm max-w-none mb-6 text-gray-800">
-                    <div className="whitespace-pre-wrap break-words leading-relaxed">
-                      {currentTab.response.data.content}
-                    </div>
+                  // Content Audit - display with proper formatting
+                  <div className="space-y-4">
+                    {formatAuditResults(currentTab.response.data.content)}
                   </div>
                 ) : (
                   // Content Development - regular formatted text
