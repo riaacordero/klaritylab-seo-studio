@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AgentResponse } from '@/app/api/agent/ask/route';
 
 type TabType = 'interlink' | 'audit' | 'develop';
+type DevelopmentSubtab = 'brief' | 'content';
 
 interface TabState {
   prompt: string;
@@ -28,6 +29,22 @@ export default function AgentInterface() {
     relatedBlogUrls: string;
   }
 
+  // Content Audit specific state
+  interface AuditState extends TabState {
+    websiteUrl: string;
+  }
+
+  // Content Development specific state
+  interface DevelopmentState extends TabState {
+    subtab: DevelopmentSubtab;
+    topicalMapFile: File | null;
+    topicalMapText: string;
+    pageTitles: string;
+    clusterKeywords: string;
+    selectedTopic: string;
+    contentBrief: string;
+  }
+
   const [interlinkTab, setInterlinkTab] = useState<InterlinkState>({
     mainUrl: '',
     contactUrl: '',
@@ -44,26 +61,34 @@ export default function AgentInterface() {
     loading: false,
   });
 
-  const [auditTab, setAuditTab] = useState<TabState>({
+  const [auditTab, setAuditTab] = useState<AuditState>({
+    websiteUrl: '',
     prompt: '',
     systemPrompt:
-      'You are an expert SEO auditor. Conduct a comprehensive content audit examining the provided content for SEO optimization opportunities, readability, keyword relevance, structure, and overall quality. Provide actionable recommendations for improvement.',
+      'You are an expert content compliance auditor and SEO specialist. Analyze the provided website URL and its content for: 1) Compliance with current standards (especially critical for finance and health content), 2) Content freshness and relevance (identify outdated information), 3) Content intent (navigational, commercial, transactional, or informational), 4) Content type (evergreen vs. time-specific like sales, promos, trends). For each page/article, determine its status: OK/Compliant, Needs Update (outdated or non-compliant), or Subject for Removal (time-specific content that has expired). Provide specific recommendations for updates or removal. Examples: Finance - JobKeeper ended March 28, 2021, so 2026 references should be removed. Health - outdated medical recommendations should be updated. Return results as a structured audit report with Status and Recommendations columns.',
     response: null,
     error: null,
     loading: false,
   });
 
-  const [developTab, setDevelopTab] = useState<TabState>({
+  const [developTab, setDevelopTab] = useState<DevelopmentState>({
+    subtab: 'brief',
+    topicalMapFile: null,
+    topicalMapText: '',
+    pageTitles: '',
+    clusterKeywords: '',
+    selectedTopic: '',
+    contentBrief: '',
     prompt: '',
     systemPrompt:
-      'You are an expert content strategist and copywriter. Create compelling, SEO-optimized content that engages readers and converts visitors. Provide well-structured content with proper formatting, keyword integration, and conversion-focused messaging.',
+      'You are an SEO copywriter with great knowledge about writing content briefs for topical experts. Review the provided topical map and supporting information to develop comprehensive content briefs that allow topical experts to be interviewed and integrate expert-level knowledge for AI-assisted content development.',
     response: null,
     error: null,
     loading: false,
   });
 
   // Get current tab state
-  const getCurrentTab = (): TabState => {
+  const getCurrentTab = (): TabState | InterlinkState | AuditState | DevelopmentState => {
     switch (activeTab) {
       case 'interlink':
         return interlinkTab;
@@ -75,7 +100,7 @@ export default function AgentInterface() {
   };
 
   // Set current tab state
-  const setCurrentTab = (newState: Partial<TabState> | Partial<InterlinkState>) => {
+  const setCurrentTab = (newState: Partial<TabState> | Partial<InterlinkState> | Partial<AuditState> | Partial<DevelopmentState>) => {
     const currentState = getCurrentTab();
     const updated = { ...currentState, ...newState };
 
@@ -84,10 +109,10 @@ export default function AgentInterface() {
         setInterlinkTab(updated as InterlinkState);
         break;
       case 'audit':
-        setAuditTab(updated as TabState);
+        setAuditTab(updated as AuditState);
         break;
       case 'develop':
-        setDevelopTab(updated as TabState);
+        setDevelopTab(updated as DevelopmentState);
         break;
     }
   };
@@ -100,10 +125,12 @@ export default function AgentInterface() {
 
     try {
       let prompt = currentTab.prompt;
+      let maxTokens = 4096;
 
       // For interlink tab, build prompt from URLs
       if (activeTab === 'interlink') {
         const interlinkState = interlinkTab as InterlinkState;
+        maxTokens = 2048;
         
         // Validate required URLs
         if (
@@ -152,6 +179,132 @@ Important:
 Return as table format with columns: Article | Page URL | Keyword | Target Page URL`;
       }
 
+      // For audit tab, build prompt from website URL
+      if (activeTab === 'audit') {
+        const auditState = auditTab as AuditState;
+
+        // Validate required URL
+        if (!auditState.websiteUrl || !auditState.websiteUrl.trim()) {
+          setCurrentTab({
+            loading: false,
+            error: 'Please fill in the Website URL field',
+          });
+          return;
+        }
+
+        prompt = `Conduct a comprehensive content audit for: ${auditState.websiteUrl}
+
+Analyze all pages and articles at this website for:
+
+1. COMPLIANCE & FRESHNESS:
+   - Identify outdated information (especially critical for finance and health content)
+   - Check compliance with current standards and regulations
+   - Examples: Finance content referencing JobKeeper (ended March 28, 2021) in 2026 should be removed; Health content with outdated medical advice should be updated
+
+2. CONTENT INTENT:
+   - Determine whether each article is: Navigational, Commercial, Transactional, or Informational
+
+3. CONTENT TYPE:
+   - Classify each article as: Evergreen (always relevant) or Time-Specific (sales, promos, trends, limited-time offers)
+
+4. FOR EACH PAGE/ARTICLE, ASSIGN STATUS:
+   - OK/Compliant: Content is current and meets standards
+   - Needs Update: Content is outdated, non-compliant, or has outdated information mixed with relevant content
+   - Subject for Removal: Time-specific content that has expired, promotional content for ended offers, or completely outdated information
+
+5. RECOMMENDATIONS:
+   - For OK Status: "None"
+   - For Needs Update: Specific recommendations for what should be updated and why
+   - For Subject for Removal: "Remove" with explanation of why it should be removed
+
+Return results as a structured audit report with columns: Page/Article | URL | Content Intent | Content Type | Status | Recommendations`;
+      }
+
+      // For development tab, build prompt based on subtab
+      if (activeTab === 'develop') {
+        const devState = developTab as DevelopmentState;
+
+        if (devState.subtab === 'brief') {
+          // Content Brief Generation
+          maxTokens = 3000;
+
+          if (!devState.topicalMapText && !devState.topicalMapFile) {
+            setCurrentTab({
+              loading: false,
+              error: 'Please upload a topical map document',
+            });
+            return;
+          }
+
+          if (!devState.pageTitles.trim()) {
+            setCurrentTab({
+              loading: false,
+              error: 'Please enter at least one page title to be built',
+            });
+            return;
+          }
+
+          if (!devState.clusterKeywords.trim()) {
+            setCurrentTab({
+              loading: false,
+              error: 'Please enter cluster keywords',
+            });
+            return;
+          }
+
+          const topicsText = devState.pageTitles
+            .split('\n')
+            .map((title) => title.trim())
+            .filter((title) => title)
+            .map((title, index) => `${index + 1}. ${title}`)
+            .join('\n');
+
+          prompt = `You are an SEO copywriter with great knowledge about writing content briefs for topical experts for the website. Review the attached document for the topical map. We are building blog pages for:
+
+${topicsText}
+
+Let's start with the first topic. For this topic, create a Content Brief that allows us to interview topical experts and generate expert-level knowledge, which can then be integrated into AI to develop the article.
+
+The Content Brief needs:
+
+- To provide an emotional hook that is client-centric based on the company
+- To provide an outline for the article that answers the Hook and deals with potential client issues
+- A list of interview questions for each point to collect expert knowledge
+- Image suggestions for the featured image for the Article
+- Generate a creative, SEO-friendly, and keyword-rich title that's related to the topic and aligned with the tone of voice of the brand
+
+Topical Map Context:
+${devState.topicalMapText || '[Topical map file uploaded]'}
+
+Cluster Keywords: ${devState.clusterKeywords}`;
+        } else {
+          // Content Development from Brief
+          maxTokens = 5000;
+
+          if (!devState.contentBrief.trim()) {
+            setCurrentTab({
+              loading: false,
+              error: 'Please paste the content brief or go back to the "Content Brief" tab to generate one',
+            });
+            return;
+          }
+
+          prompt = `Using the following content brief, develop a comprehensive, well-structured article that:
+
+1. Follows the brief's outline and structure
+2. Incorporates the emotional hook for the target audience
+3. Answers all questions posed in the brief
+4. Integrates expert knowledge and insights
+5. Is SEO-optimized with keyword integration
+6. Includes proper headings, subheadings, and formatting
+7. Has a compelling introduction and conclusion
+8. Includes a call-to-action if appropriate
+
+Content Brief:
+${devState.contentBrief}`;
+        }
+      }
+
       const res = await fetch('/api/agent/ask', {
         method: 'POST',
         headers: {
@@ -161,7 +314,7 @@ Return as table format with columns: Article | Page URL | Keyword | Target Page 
           prompt: prompt,
           systemPrompt: currentTab.systemPrompt,
           provider: selectedProvider,
-          maxTokens: 2048,
+          maxTokens: maxTokens,
           temperature: 0.7,
         }),
       });
@@ -199,7 +352,10 @@ Return as table format with columns: Article | Page URL | Keyword | Target Page 
       case 'audit':
         return 'Comprehensive content audit for SEO optimization, readability, and quality improvements';
       case 'develop':
-        return 'Create compelling, SEO-optimized content that engages and converts visitors';
+        const devState = developTab as DevelopmentState;
+        return devState.subtab === 'brief'
+          ? 'Generate content briefs for topical experts to develop high-quality, expert-driven content'
+          : 'Develop full articles from content briefs with expert knowledge integration';
     }
   };
 
@@ -318,8 +474,8 @@ Return as table format with columns: Article | Page URL | Keyword | Target Page 
                 <p className="text-gray-700">{getTabDescription(activeTab)}</p>
               </div>
 
-              {/* Provider Selector - Hide for Interlink */}
-              {activeTab !== 'interlink' && (
+              {/* Provider Selector - Hide for Interlink & Audit */}
+              {activeTab !== 'interlink' && activeTab !== 'audit' && (
                 <div className="card p-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     LLM Provider
@@ -459,46 +615,222 @@ Return as table format with columns: Article | Page URL | Keyword | Target Page 
                 </>
               )}
 
-              {/* Non-Interlink Form Fields */}
-              {activeTab !== 'interlink' && (
+              {/* Content Audit Specific Form */}
+              {activeTab === 'audit' && (
                 <>
-                  {/* System Prompt */}
+                  {/* Website URL */}
                   <div className="card p-6">
                     <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      System Context
+                      Website URL to be analysed *
                     </label>
-                    <textarea
-                      value={currentTab.systemPrompt}
-                      onChange={(e) => setCurrentTab({ systemPrompt: e.target.value })}
-                      placeholder="System context for the AI..."
-                      rows={4}
-                      className="input-field resize-none"
+                    <input
+                      type="url"
+                      value={(auditTab as AuditState).websiteUrl}
+                      onChange={(e) => setCurrentTab({ websiteUrl: e.target.value })}
+                      placeholder="https://example.com"
+                      className="input-field"
                       disabled={currentTab.loading}
                     />
                     <p className="text-xs text-gray-500 mt-2">
-                      Define the AI&apos;s role and expertise area
+                      Enter the website URL to conduct a comprehensive content audit
                     </p>
                   </div>
 
-                  {/* User Prompt */}
+                  {/* Audit Description */}
+                  <div className="card p-6 bg-purple-50 border border-purple-200">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">What This Analyzes</h3>
+                    <ul className="text-xs text-gray-700 space-y-2">
+                      <li>✓ <strong>Compliance & Freshness:</strong> Outdated information, especially in finance/health</li>
+                      <li>✓ <strong>Content Intent:</strong> Navigational, Commercial, Transactional, or Informational</li>
+                      <li>✓ <strong>Content Type:</strong> Evergreen vs. Time-Specific (sales, promos, trends)</li>
+                      <li>✓ <strong>Status Assignment:</strong> OK/Compliant, Needs Update, or Subject for Removal</li>
+                      <li>✓ <strong>Recommendations:</strong> Specific actions for each content status</li>
+                    </ul>
+                  </div>
+                </>
+              )}
+
+              {/* Content Development Form */}
+              {activeTab === 'develop' && (
+                <>
+                  {/* Development Subtabs */}
+                  <div className="card p-4 border-b-2 border-gray-200 bg-gray-50">
+                    <div className="flex gap-2 sm:gap-0">
+                      {(['brief', 'content'] as DevelopmentSubtab[]).map((subtab) => (
+                        <button
+                          key={subtab}
+                          type="button"
+                          onClick={() => {
+                            setCurrentTab({ subtab });
+                          }}
+                          disabled={currentTab.loading}
+                          className={`flex-1 py-3 px-4 font-semibold text-sm transition-all border-b-2 ${
+                            (developTab as DevelopmentState).subtab === subtab
+                              ? 'border-blue-600 text-blue-600 bg-white'
+                              : 'border-transparent text-gray-600 hover:text-gray-900'
+                          }`}
+                        >
+                          {subtab === 'brief' ? 'Content Brief' : 'Develop Content'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Content Brief Subtab */}
+                  {(developTab as DevelopmentState).subtab === 'brief' && (
+                    <>
+                      {/* Topical Map Upload */}
+                      <div className="card p-6">
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Topical Map Document *
+                        </label>
+                        <div className="flex gap-3 items-center">
+                          <input
+                            type="file"
+                            id="topical-map-file"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  const text = event.target?.result as string;
+                                  setCurrentTab({ topicalMapFile: file, topicalMapText: text });
+                                };
+                                reader.readAsText(file);
+                              }
+                            }}
+                            accept=".txt,.pdf,.doc,.docx"
+                            disabled={currentTab.loading}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="topical-map-file"
+                            className="cursor-pointer px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                          >
+                            {(developTab as DevelopmentState).topicalMapFile
+                              ? `✓ ${(developTab as DevelopmentState).topicalMapFile?.name}`
+                              : 'Choose File'}
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Upload your topical map document (TXT, PDF, or DOC)
+                        </p>
+                      </div>
+
+                      {/* Or Paste Topical Map */}
+                      <div className="card p-6">
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Or Paste Topical Map
+                        </label>
+                        <textarea
+                          value={(developTab as DevelopmentState).topicalMapText}
+                          onChange={(e) => setCurrentTab({ topicalMapText: e.target.value })}
+                          placeholder="Paste your topical map content here..."
+                          rows={6}
+                          className="input-field resize-none"
+                          disabled={currentTab.loading}
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                          Or paste the content directly if you prefer not to upload a file
+                        </p>
+                      </div>
+
+                      {/* Page Titles to Build */}
+                      <div className="card p-6">
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Page Titles to be Built *
+                        </label>
+                        <textarea
+                          value={(developTab as DevelopmentState).pageTitles}
+                          onChange={(e) => setCurrentTab({ pageTitles: e.target.value })}
+                          placeholder={
+                            'Enter the titles of pages you want to build\n\nExamples:\nBest Digital Marketing Strategies for 2026\nHow to Implement SEO in Your Business\nContent Marketing Tips for Startups'
+                          }
+                          rows={4}
+                          className="input-field resize-none"
+                          disabled={currentTab.loading}
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                          Enter one title per line. The first title will be used to generate the content brief.
+                        </p>
+                      </div>
+
+                      {/* Cluster Keywords */}
+                      <div className="card p-6">
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Cluster Keywords *
+                        </label>
+                        <textarea
+                          value={(developTab as DevelopmentState).clusterKeywords}
+                          onChange={(e) => setCurrentTab({ clusterKeywords: e.target.value })}
+                          placeholder={
+                            'Enter cluster keywords related to your topic\n\nExamples:\ndigital marketing, content strategy, SEO, social media marketing, email marketing'
+                          }
+                          rows={3}
+                          className="input-field resize-none"
+                          disabled={currentTab.loading}
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                          Enter keywords separated by commas or line breaks
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Develop Content Subtab */}
+                  {(developTab as DevelopmentState).subtab === 'content' && (
+                    <>
+                      {/* Content Brief Input */}
+                      <div className="card p-6">
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Content Brief *
+                        </label>
+                        <textarea
+                          value={(developTab as DevelopmentState).contentBrief}
+                          onChange={(e) => setCurrentTab({ contentBrief: e.target.value })}
+                          placeholder={
+                            'Paste the content brief here. You can:\n\n1. Generate one from the "Content Brief" tab above\n2. Paste a previously generated brief\n3. Paste a brief from another source\n\nThe AI will use this brief to develop a comprehensive article.'
+                          }
+                          rows={8}
+                          className="input-field resize-none"
+                          disabled={currentTab.loading}
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                          Paste the content brief that was previously generated. This will be used as a guide for content development.
+                        </p>
+                      </div>
+
+                      {/* Info Box */}
+                      <div className="card p-6 bg-blue-50 border border-blue-200">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-2">How This Works</h3>
+                        <ol className="text-xs text-gray-700 space-y-2 list-decimal list-inside">
+                          <li>Start with the <strong>Content Brief</strong> tab to generate a brief from your topical map</li>
+                          <li>Copy the generated brief below (or paste your own brief)</li>
+                          <li>Let the AI develop a full article following the brief structure</li>
+                          <li>The AI will incorporate the emotional hook, outline, and expert questions into the final article</li>
+                        </ol>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Provider Selector */}
                   <div className="card p-6">
                     <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Your Request
+                      LLM Provider
                     </label>
-                    <textarea
-                      value={currentTab.prompt}
-                      onChange={(e) => setCurrentTab({ prompt: e.target.value })}
-                      placeholder={
-                        activeTab === 'audit'
-                          ? 'Paste your content or describe what needs to be audited...'
-                          : 'Describe what content you need to create...'
+                    <select
+                      value={selectedProvider}
+                      onChange={(e) =>
+                        setSelectedProvider(e.target.value as 'gemini' | 'openai-compatible')
                       }
-                      rows={6}
-                      className="input-field resize-none"
+                      className="input-field"
                       disabled={currentTab.loading}
-                    />
+                    >
+                      <option value="gemini">Gemini (Google)</option>
+                      <option value="openai-compatible">OpenAI Compatible</option>
+                    </select>
                     <p className="text-xs text-gray-500 mt-2">
-                      Be specific and detailed for better recommendations
+                      Make sure the selected provider is configured in your environment
                     </p>
                   </div>
                 </>
@@ -517,7 +849,18 @@ Return as table format with columns: Article | Page URL | Keyword | Target Page 
                         (interlinkTab as InterlinkState).bookingUrl.trim() &&
                         (interlinkTab as InterlinkState).blogDirUrl.trim()
                       )
-                    : !currentTab.prompt.trim())
+                    : activeTab === 'audit'
+                    ? !(auditTab as AuditState).websiteUrl.trim()
+                    : activeTab === 'develop'
+                    ? (developTab as DevelopmentState).subtab === 'brief'
+                      ? !(
+                          ((developTab as DevelopmentState).topicalMapText ||
+                            (developTab as DevelopmentState).topicalMapFile) &&
+                          (developTab as DevelopmentState).pageTitles.trim() &&
+                          (developTab as DevelopmentState).clusterKeywords.trim()
+                        )
+                      : !(developTab as DevelopmentState).contentBrief.trim()
+                    : false)
                 }
                 className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -526,8 +869,14 @@ Return as table format with columns: Article | Page URL | Keyword | Target Page 
                     <span className="inline-block animate-spin mr-2">⏳</span>
                     Processing...
                   </>
+                ) : activeTab === 'interlink' ? (
+                  'Analyze Interlinking'
+                ) : activeTab === 'audit' ? (
+                  'Analyze Content'
+                ) : (developTab as DevelopmentState).subtab === 'brief' ? (
+                  'Generate Content Brief'
                 ) : (
-                  `${activeTab === 'interlink' ? 'Analyze Interlinking' : 'Analyze with AI'}`
+                  'Develop Article'
                 )}
               </button>
             </form>
