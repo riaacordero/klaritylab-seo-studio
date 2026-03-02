@@ -430,17 +430,36 @@ ${devState.contentBrief}`;
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <header className="text-center mb-12">
+        <header className="text-center mb-4">
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
             SEO Studio by Klarity Lab
           </h1>
-          <p className="text-lg text-gray-600 mb-2">
+          <p className="text-lg text-gray-600">
             AI-powered content optimization and strategy suite
           </p>
-          <p className="text-sm text-gray-500">
-            Choose a tool below to get started
-          </p>
         </header>
+
+        {/* LLM Provider Selector */}
+        <div className="mb-8 flex justify-center">
+          <div className="w-full sm:w-64">
+            <div className="card p-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Select your AI Model
+              </label>
+              <select
+                value={selectedProvider}
+                onChange={(e) =>
+                  setSelectedProvider(e.target.value as 'gemini' | 'openai-compatible')
+                }
+                className="input-field text-sm"
+                disabled={currentTab.loading}
+              >
+                <option value="gemini">Gemini (Google)</option>
+                <option value="openai-compatible">OpenAI Compatible</option>
+              </select>
+            </div>
+          </div>
+        </div>
 
         {/* Tab Navigation */}
         <div className="mb-8 border-b border-gray-300">
@@ -473,29 +492,6 @@ ${devState.contentBrief}`;
                 </h2>
                 <p className="text-gray-700">{getTabDescription(activeTab)}</p>
               </div>
-
-              {/* Provider Selector - Hide for Interlink & Audit */}
-              {activeTab !== 'interlink' && activeTab !== 'audit' && (
-                <div className="card p-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    LLM Provider
-                  </label>
-                  <select
-                    value={selectedProvider}
-                    onChange={(e) =>
-                      setSelectedProvider(e.target.value as 'gemini' | 'openai-compatible')
-                    }
-                    className="input-field"
-                    disabled={currentTab.loading}
-                  >
-                    <option value="gemini">Gemini (Google)</option>
-                    <option value="openai-compatible">OpenAI Compatible</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Make sure the selected provider is configured in your environment
-                  </p>
-                </div>
-              )}
 
               {/* Interlink Review Specific Form */}
               {activeTab === 'interlink' && (
@@ -812,27 +808,6 @@ ${devState.contentBrief}`;
                       </div>
                     </>
                   )}
-
-                  {/* Provider Selector */}
-                  <div className="card p-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      LLM Provider
-                    </label>
-                    <select
-                      value={selectedProvider}
-                      onChange={(e) =>
-                        setSelectedProvider(e.target.value as 'gemini' | 'openai-compatible')
-                      }
-                      className="input-field"
-                      disabled={currentTab.loading}
-                    >
-                      <option value="gemini">Gemini (Google)</option>
-                      <option value="openai-compatible">OpenAI Compatible</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Make sure the selected provider is configured in your environment
-                    </p>
-                  </div>
                 </>
               )}
 
