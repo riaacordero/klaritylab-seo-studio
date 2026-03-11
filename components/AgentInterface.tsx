@@ -595,6 +595,81 @@ Provide detailed copy for each essential page section.`;
     );
   };
 
+  // Format general markdown-style content with proper HTML
+  const formatContent = (content: string) => {
+    const lines = content.split('\n');
+    
+    return (
+      <div className="space-y-4">
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+          
+          if (!trimmed) {
+            return <div key={idx} className="h-2" />;
+          }
+          
+          // ## Heading 2 (font size: 20px, bold)
+          if (trimmed.startsWith('## ')) {
+            const text = trimmed.replace(/^##\s+/, '');
+            return (
+              <h2 key={idx} style={{ fontSize: '20px', fontWeight: 600, color: '#111827', marginBottom: '12px' }}>
+                {text}
+              </h2>
+            );
+          }
+          
+          // # Heading 1 (font size: 24px, bold)
+          if (trimmed.startsWith('# ')) {
+            const text = trimmed.replace(/^#\s+/, '');
+            return (
+              <h1 key={idx} style={{ fontSize: '24px', fontWeight: 700, color: '#111827', marginBottom: '16px' }}>
+                {text}
+              </h1>
+            );
+          }
+          
+          // ### Heading 3 (font size: 18px, bold)
+          if (trimmed.startsWith('### ')) {
+            const text = trimmed.replace(/^###\s+/, '');
+            return (
+              <h3 key={idx} style={{ fontSize: '18px', fontWeight: 600, color: '#111827', marginBottom: '12px' }}>
+                {text}
+              </h3>
+            );
+          }
+          
+          // Bullet points
+          if (trimmed.startsWith('-') || trimmed.startsWith('•')) {
+            const text = trimmed.replace(/^[-•]\s*/, '');
+            return (
+              <div key={idx} style={{ marginLeft: '24px', color: '#1f2937', lineHeight: '1.6' }}>
+                • {text}
+              </div>
+            );
+          }
+          
+          // Bold text with **text**
+          const parts = trimmed.split(/(\*\*[^*]+\*\*)|(\*[^*]+\*)/);
+          const formatted = parts.map((part, partIdx) => {
+            if (part?.startsWith('**') && part?.endsWith('**')) {
+              return <strong key={partIdx}>{part.replace(/\*\*/g, '')}</strong>;
+            }
+            if (part?.startsWith('*') && part?.endsWith('*')) {
+              return <em key={partIdx}>{part.replace(/\*/g, '')}</em>;
+            }
+            return <span key={partIdx}>{part}</span>;
+          });
+          
+          return (
+            <p key={idx} style={{ color: '#1f2937', lineHeight: '1.6' }}>
+              {formatted}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Parse interlink table from AI response
   const parseInterlinkTable = (content: string) => {
     const lines = content.split('\n').filter((line) => line.trim());
@@ -994,23 +1069,21 @@ Provide detailed copy for each essential page section.`;
 
 
 
-                      {/* Page Titles to Build */}
+                      {/* Page Title to Build */}
                       <div className="card p-6">
                         <label className="block text-sm font-semibold text-gray-700 mb-3">
-                          Page Titles to be Built *
+                          Page Title *
                         </label>
-                        <textarea
+                        <input
+                          type="text"
                           value={(developTab as DevelopmentState).pageTitles}
                           onChange={(e) => setCurrentTab({ pageTitles: e.target.value })}
-                          placeholder={
-                            'Enter the titles of pages you want to build\n\nExamples:\nBest Digital Marketing Strategies for 2026\nHow to Implement SEO in Your Business\nContent Marketing Tips for Startups'
-                          }
-                          rows={4}
-                          className="input-field resize-none"
+                          placeholder="Enter the title of the page you want to build (e.g., Best Digital Marketing Strategies for 2026)"
+                          className="input-field"
                           disabled={currentTab.loading}
                         />
                         <p className="text-xs text-gray-500 mt-2">
-                          Enter one title per line. The first title will be used to generate the content brief.
+                          Enter a single page title to generate the content brief.
                         </p>
                       </div>
 
@@ -1432,12 +1505,8 @@ Provide detailed copy for each essential page section.`;
                     {formatAuditResults(currentTab.response.data.content)}
                   </div>
                 ) : (
-                  // Content Development - regular formatted text
-                  <div className="prose prose-sm max-w-none mb-6 text-gray-800">
-                    <div className="whitespace-pre-wrap break-words">
-                      {currentTab.response.data.content}
-                    </div>
-                  </div>
+                  // Content Development - formatted with proper HTML
+                  formatContent(currentTab.response.data.content)
                 )}
 
                 {/* Metadata */}
