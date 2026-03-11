@@ -247,7 +247,7 @@ Return results as a structured audit report with columns: Page/Article | URL | C
           // Content Brief Generation
           maxTokens = 3000;
 
-          if (!devState.topicalMapText && !devState.topicalMapFile) {
+          if (!devState.topicalMapFile) {
             setCurrentTab({
               loading: false,
               error: 'Please upload a topical map document',
@@ -967,7 +967,7 @@ Provide detailed copy for each essential page section.`;
                                 reader.readAsText(file);
                               }
                             }}
-                            accept=".txt,.pdf,.doc,.docx"
+                            accept=".txt,.pdf,.doc,.docx,.xlsx,.csv"
                             disabled={currentTab.loading}
                             className="hidden"
                           />
@@ -988,27 +988,11 @@ Provide detailed copy for each essential page section.`;
                           </label>
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
-                          Upload your topical map document (TXT, PDF, or DOC)
+                          Upload your topical map document (TXT, PDF, DOCX, XLSX, or CSV)
                         </p>
                       </div>
 
-                      {/* Or Paste Topical Map */}
-                      <div className="card p-6">
-                        <label className="block text-sm font-semibold text-gray-700 mb-3">
-                          Or Paste Topical Map
-                        </label>
-                        <textarea
-                          value={(developTab as DevelopmentState).topicalMapText}
-                          onChange={(e) => setCurrentTab({ topicalMapText: e.target.value })}
-                          placeholder="Paste your topical map content here..."
-                          rows={6}
-                          className="input-field resize-none"
-                          disabled={currentTab.loading}
-                        />
-                        <p className="text-xs text-gray-500 mt-2">
-                          Or paste the content directly if you prefer not to upload a file
-                        </p>
-                      </div>
+
 
                       {/* Page Titles to Build */}
                       <div className="card p-6">
@@ -1336,8 +1320,7 @@ Provide detailed copy for each essential page section.`;
                     : activeTab === 'develop'
                     ? (developTab as DevelopmentState).subtab === 'brief'
                       ? !(
-                          ((developTab as DevelopmentState).topicalMapText ||
-                            (developTab as DevelopmentState).topicalMapFile) &&
+                          (developTab as DevelopmentState).topicalMapFile &&
                           (developTab as DevelopmentState).pageTitles.trim() &&
                           (developTab as DevelopmentState).clusterKeywords.trim()
                         )
